@@ -51,12 +51,23 @@ var makeQuery = (sql, pool)=>{
     }
 }
 
-//Book by title & author
-const sqlFindAllBooks = "SELECT cover_thumbnail, title, author_lastname, author_firstname FROM books WHERE (title LIKE ?) || (author_lastname LIKE ?) || (author_firstname LIKE ?) LIMIT ? OFFSET ?";
-var findAllBooks = makeQuery(sqlFindAllBooks, pool);
+//Book by title
+const sqlFindAllBooksTitle = "SELECT cover_thumbnail, title, author_lastname, author_firstname FROM books WHERE (title LIKE ?) || (author_lastname LIKE ?) || (author_firstname LIKE ?) ORDER BY title ASC LIMIT ? OFFSET ?";
+const sqlFindAllBooksTitleDesc = "SELECT cover_thumbnail, title, author_lastname, author_firstname FROM books WHERE (title LIKE ?) || (author_lastname LIKE ?) || (author_firstname LIKE ?) ORDER BY title DESC LIMIT ? OFFSET ?";
+
+var findAllBooksTitle = makeQuery(sqlFindAllBooksTitle, pool);
+var findAllBooksTitleDesc = makeQuery(sqlFindAllBooksTitleDesc, pool);
+
+//Book by author
+const sqlFindAllBooksAuthor = "SELECT cover_thumbnail, title, author_lastname, author_firstname FROM books WHERE (title LIKE ?) || (author_lastname LIKE ?) || (author_firstname LIKE ?) ORDER BY author_lastname ASC LIMIT ? OFFSET ?";
+const sqlFindAllBooksAuthorDesc = "SELECT cover_thumbnail, title, author_lastname, author_firstname FROM books WHERE (title LIKE ?) || (author_lastname LIKE ?) || (author_firstname LIKE ?) ORDER BY author_lastname DESC LIMIT ? OFFSET ?";
+
+var findAllBooksAuthorAsc = makeQuery(sqlFindAllBooksAuthor, pool);
+var findAllBooksAuthorDesc = makeQuery(sqlFindAllBooksAuthorDesc, pool);
 
 //Book by id
 const sqlFindBookById = "SELECT * FROM books WHERE id=? ";
+
 var findBookById = makeQuery(sqlFindBookById, pool);
 
 //Routes
@@ -75,11 +86,20 @@ var findBookById = makeQuery(sqlFindBookById, pool);
  
  })
 
-    //Book by query
+    //Books by query
     app.get("/books", (req, res)=>{
         console.log("/books !");
         var bookId = req.query.id;
         console.log(bookId);
+    
+    //10 books by default
+        if(typeof(req.query.limit) === 'undefined' ){
+            req.query.limit = '10';
+        }
+
+        if(typeof(req.query.offset) === 'undefined' ){
+            req.query.offset = '0';
+        }
         
         if(typeof(bookId) === 'undefined' ){
             console.log(req.query);
@@ -89,7 +109,7 @@ var findBookById = makeQuery(sqlFindBookById, pool);
             console.log(keyword);
             console.log(selectionType);
             
-            let finalCriteriaFromType = ['%', '%' , parseInt(req.query.limit), parseInt(req.query.offset)];
+            let finalCriteriaFromType = ['%', '%' ,'%', parseInt(req.query.limit), parseInt(req.query.offset)];
             if(selectionType == 'BT'){
                 finalCriteriaFromType = ['%' + keyword + '%', '' , '', parseInt(req.query.limit),parseInt(req.query.offset)]
             }
@@ -102,13 +122,42 @@ var findBookById = makeQuery(sqlFindBookById, pool);
                 finalCriteriaFromType = ['%' + keyword + '%', '%' +keyword + '%', '%' +keyword + '%', ,parseInt(req.query.limit),parseInt(req.query.offset)]
             }
             console.log ("here - ",finalCriteriaFromType);
-            findAllBooks(finalCriteriaFromType)
-            .then((results)=>{
-                console.log(results);
-                res.json(results);
-            }).catch((error)=>{
-                res.status(500).json(error);
-            });
+
+    //Sort (Title & Author)
+            if (req.query.sort == 'title_d') {
+                findAllBooksTitleDesc(finalCriteriaFromType)
+                .then((results)=>{
+                    console.log(results);
+                    res.json(results);
+                }).catch((error)=>{
+                    res.status(500).json(error);
+                });
+            } else if (req.query.sort == 'author_a') {
+                findAllBooksAuthorAsc(finalCriteriaFromType)
+                .then((results)=>{
+                    console.log(results);
+                    res.json(results);
+                }).catch((error)=>{
+                    res.status(500).json(error);
+                });
+            } else if (req.query.sort == 'author_d') {
+                findAllBooksAuthorDesc(finalCriteriaFromType)
+                .then((results)=>{
+                    console.log(results);
+                    res.json(results);
+                }).catch((error)=>{
+                    res.status(500).json(error);
+                });
+            } else{
+                findAllBooksTitle(finalCriteriaFromType)
+                .then((results)=>{
+                    console.log(results);
+                    res.json(results);
+                }).catch((error)=>{
+                    res.status(500).json(error);
+                });
+            } 
+
         }else{
             findBookById([parseInt(bookId)]).then((results)=>{
                 console.log(results);
